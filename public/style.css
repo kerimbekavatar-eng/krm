@@ -209,9 +209,7 @@ input::placeholder {
 
 .join-group input {
     flex: 1;
-    text-transform: uppercase;
     text-align: center;
-    letter-spacing: 0.3em;
     font-weight: 600;
 }
 
