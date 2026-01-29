@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Крестики-Нолики Online</title>
+    <meta name="description" content="Играй в крестики-нолики с друзьями по сети">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Lobby Screen -->
+        <div id="lobby" class="screen active">
+            <h1 class="title">
+                <span class="x">X</span>
+                <span class="o">O</span>
+                <span class="subtitle">Online</span>
+            </h1>
+
+            <div class="input-group">
+                <input type="text" id="playerName" placeholder="Твоё имя" maxlength="15">
+            </div>
+
+            <div class="buttons">
+                <button id="createBtn" class="btn btn-primary">
+                    <span class="icon">🏠</span>
+                    Создать комнату
+                </button>
+
+                <div class="divider">или</div>
+
+                <div class="join-group">
+                    <input type="text" id="roomCodeInput" placeholder="IP адрес (192.168.x.x)" maxlength="15">
+                    <div class="btn-hover-wrapper">
+                        <button class="btn btn-secondary btn-fake">
+                            <span class="icon">🚪</span>
+                            Войти
+                        </button>
+                        <button id="joinBtn" class="btn btn-danger btn-real">
+                            <span class="icon">💥</span>
+                            Засадить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Screen -->
+        <div id="waiting" class="screen">
+            <h2>Ожидание игрока...</h2>
+            <div class="room-code-display">
+                <span>Твой IP адрес:</span>
+                <div id="displayCode" class="code ip-style"></div>
+                <button id="copyBtn" class="btn btn-small">📋 Копировать</button>
+            </div>
+            <div class="loader"></div>
+            <p class="hint">Отправь IP другу!</p>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game" class="screen">
+            <div class="game-header">
+                <div class="player player-x">
+                    <span class="symbol">X</span>
+                    <span id="playerXName" class="name">Игрок X</span>
+                </div>
+                <div class="vs">VS</div>
+                <div class="player player-o">
+                    <span class="symbol">O</span>
+                    <span id="playerOName" class="name">Игрок O</span>
+                </div>
+            </div>
+
+            <div id="status" class="status">Ход X</div>
+
+            <div id="board" class="board">
+                <div class="cell" data-index="0"></div>
+                <div class="cell" data-index="1"></div>
+                <div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div>
+                <div class="cell" data-index="4"></div>
+                <div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div>
+                <div class="cell" data-index="7"></div>
+                <div class="cell" data-index="8"></div>
+            </div>
+
+            <button id="rematchBtn" class="btn btn-primary hidden">
+                🔄 Реванш
+            </button>
+        </div>
+
+        <!-- Error Toast -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>
