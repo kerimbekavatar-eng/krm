@@ -125,13 +125,18 @@ createBtn.addEventListener('click', () => {
     const name = playerNameInput.value.trim() || 'Игрок 1';
     players.X = name;
 
-    // Create random 4-char ID for simplicity
-    const roomId = 'tt-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+    // Generate fake IP address as room ID
+    const ip1 = 192;
+    const ip2 = 168;
+    const ip3 = Math.floor(Math.random() * 256);
+    const ip4 = Math.floor(Math.random() * 256);
+    const roomId = `ip-${ip1}-${ip2}-${ip3}-${ip4}`;
+    const displayIp = `${ip1}.${ip2}.${ip3}.${ip4}`;
 
     initPeer(roomId);
 
     peer.on('open', (id) => {
-        displayCode.textContent = id.replace('tt-', ''); // Show distinct code
+        displayCode.textContent = displayIp;
         showScreen(waitingScreen);
         mySide = 'X';
     });
@@ -155,18 +160,22 @@ createBtn.addEventListener('click', () => {
 // --- GUEST LOGIC (Player O) ---
 joinBtn.addEventListener('click', () => {
     const name = playerNameInput.value.trim() || 'Игрок 2';
-    const code = roomCodeInput.value.trim().toUpperCase();
+    const ipInput = roomCodeInput.value.trim();
 
-    if (code.length < 4) {
-        showToast('Введите правильный код');
+    // Validate IP format (simple check)
+    const ipParts = ipInput.split('.');
+    if (ipParts.length !== 4 || ipParts.some(p => isNaN(p) || p < 0 || p > 255)) {
+        showToast('Введите правильный IP (192.168.x.x)');
         return;
     }
+
+    // Convert IP to peer ID format
+    const hostId = `ip-${ipParts.join('-')}`;
 
     // Guest gets auto ID
     initPeer();
 
     peer.on('open', () => {
-        const hostId = 'tt-' + code;
         conn = peer.connect(hostId);
 
         conn.on('open', () => {
@@ -177,7 +186,7 @@ joinBtn.addEventListener('click', () => {
         });
 
         conn.on('error', () => {
-            showToast('Не удалось подключиться к комнате');
+            showToast('Не удалось подключиться к игроку');
         });
     });
 });

@@ -26,7 +26,7 @@ body {
     justify-content: center;
     align-items: center;
     color: var(--text-primary);
-    background-image: 
+    background-image:
         radial-gradient(circle at 20% 80%, rgba(0, 245, 255, 0.05) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(255, 0, 170, 0.05) 0%, transparent 50%);
 }
@@ -48,8 +48,15 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Title */
@@ -81,8 +88,15 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 /* Input */
@@ -180,8 +194,13 @@ input::placeholder {
     background: var(--border-color);
 }
 
-.divider::before { left: 0; }
-.divider::after { right: 0; }
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
 
 .join-group {
     display: flex;
@@ -198,6 +217,53 @@ input::placeholder {
 
 .join-group .btn {
     white-space: nowrap;
+}
+
+/* Hover Button Swap Effect */
+.btn-hover-wrapper {
+    position: relative;
+}
+
+.btn-fake {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.btn-real {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.btn-hover-wrapper:hover .btn-fake {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.btn-hover-wrapper:hover .btn-real {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    color: #fff;
+    border: none;
+}
+
+.btn-danger:hover {
+    box-shadow: 0 0 25px rgba(255, 68, 68, 0.6);
+}
+
+/* IP Style Code Display */
+.code.ip-style {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.1em;
+    font-size: 2rem;
 }
 
 /* Waiting Screen */
@@ -243,7 +309,9 @@ input::placeholder {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .hint {
@@ -367,14 +435,28 @@ input::placeholder {
 }
 
 @keyframes pop {
-    0% { transform: scale(0); }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(0);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 @keyframes winPulse {
-    from { transform: scale(1); }
-    to { transform: scale(1.05); box-shadow: 0 0 30px var(--success); }
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px var(--success);
+    }
 }
 
 .hidden {
@@ -407,11 +489,11 @@ input::placeholder {
     .title {
         font-size: 3rem;
     }
-    
+
     .cell {
         font-size: 2.5rem;
     }
-    
+
     .code {
         font-size: 2.5rem;
     }
