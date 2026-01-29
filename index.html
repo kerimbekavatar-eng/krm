@@ -35,7 +35,8 @@
                 <div class="divider">или</div>
 
                 <div class="join-group">
-                    <input type="text" id="roomCodeInput" placeholder="IP адрес (192.168.x.x)" maxlength="15">
+                    <input type="text" id="roomCodeInput" placeholder="Код комнаты" maxlength="6"
+                        style="text-transform: uppercase;">
                     <div class="btn-hover-wrapper">
                         <button class="btn btn-secondary btn-fake">
                             <span class="icon">🚪</span>
@@ -54,12 +55,12 @@
         <div id="waiting" class="screen">
             <h2>Ожидание игрока...</h2>
             <div class="room-code-display">
-                <span>Твой IP адрес:</span>
-                <div id="displayCode" class="code ip-style"></div>
+                <span>Код комнаты:</span>
+                <div id="displayCode" class="code"></div>
                 <button id="copyBtn" class="btn btn-small">📋 Копировать</button>
             </div>
             <div class="loader"></div>
-            <p class="hint">Отправь IP другу!</p>
+            <p class="hint">Отправь код другу!</p>
         </div>
 
         <!-- Game Screen -->

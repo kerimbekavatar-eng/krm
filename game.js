@@ -33,10 +33,10 @@ function showScreen(screen) {
     screen.classList.add('active');
 }
 
-function showToast(msg) {
+function showToast(msg, duration = 3000) {
     toast.textContent = msg;
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
+    setTimeout(() => toast.classList.remove('show'), duration);
 }
 
 function updateStatus(text, cls = '') {
@@ -79,82 +79,125 @@ function endGame(result) {
 }
 
 // === PEER SETUP ===
-function generateIP() {
-    const a = Math.floor(Math.random() * 256);
-    const b = Math.floor(Math.random() * 256);
-    return `192.168.${a}.${b}`;
+function generateCode() {
+    // Simple 6-character code
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function ipToPeerId(ip) {
-    return 'ttt-' + ip.replace(/\./g, '-');
-}
-
-function peerIdToIp(id) {
-    return id.replace('ttt-', '').replace(/-/g, '.');
+function codeToPeerId(code) {
+    return 'xo-game-' + code.toLowerCase();
 }
 
 // === HOST (X) ===
 createBtn.addEventListener('click', () => {
     const name = playerNameInput.value.trim() || 'Хост';
     players.X = name;
-    myRoomCode = generateIP();
-    const peerId = ipToPeerId(myRoomCode);
+    myRoomCode = generateCode();
+    const peerId = codeToPeerId(myRoomCode);
 
-    peer = new Peer(peerId);
+    showToast('Подключение...', 10000);
 
-    peer.on('open', () => {
+    peer = new Peer(peerId, {
+        debug: 2
+    });
+
+    peer.on('open', (id) => {
+        console.log('Host peer opened with ID:', id);
         mySide = 'X';
         displayCode.textContent = myRoomCode;
         showScreen(waitingScreen);
+        showToast('Комната создана! Жди друга', 3000);
     });
 
     peer.on('connection', (connection) => {
+        console.log('Guest connected!');
         conn = connection;
+
         conn.on('open', () => {
-            conn.on('data', handleData);
+            console.log('Connection opened');
+            showToast('Игрок подключился!', 2000);
         });
+
+        conn.on('data', (data) => {
+            console.log('Host received:', data);
+            handleData(data);
+        });
+
         conn.on('close', () => {
             showToast('Противник отключился');
             setTimeout(() => location.reload(), 2000);
         });
+
+        conn.on('error', (err) => {
+            console.error('Connection error:', err);
+            showToast('Ошибка соединения');
+        });
     });
 
     peer.on('error', (err) => {
-        console.error(err);
+        console.error('Peer error:', err);
         if (err.type === 'unavailable-id') {
-            showToast('IP занят, попробуй ещё раз');
-            setTimeout(() => location.reload(), 1500);
+            showToast('Код занят, создаю новый...');
+            setTimeout(() => {
+                peer.destroy();
+                createBtn.click();
+            }, 1000);
         } else {
             showToast('Ошибка: ' + err.type);
         }
+    });
+
+    peer.on('disconnected', () => {
+        console.log('Peer disconnected, reconnecting...');
+        peer.reconnect();
     });
 });
 
 // === GUEST (O) ===
 joinBtn.addEventListener('click', () => {
     const name = playerNameInput.value.trim() || 'Гость';
-    const ip = roomCodeInput.value.trim();
+    const code = roomCodeInput.value.trim().toUpperCase();
 
-    if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
-        showToast('Введи правильный IP (192.168.x.x)');
+    if (code.length < 4) {
+        showToast('Введи код комнаты (6 символов)');
         return;
     }
 
     players.O = name;
-    const hostId = ipToPeerId(ip);
+    const hostId = codeToPeerId(code);
 
-    peer = new Peer();
+    showToast('Подключение к ' + code + '...', 10000);
+    console.log('Connecting to host:', hostId);
 
-    peer.on('open', () => {
+    peer = new Peer(undefined, {
+        debug: 2
+    });
+
+    peer.on('open', (myId) => {
+        console.log('Guest peer opened with ID:', myId);
         mySide = 'O';
-        conn = peer.connect(hostId, { reliable: true });
 
-        conn.on('open', () => {
-            conn.send({ type: 'join', name: name });
-            conn.on('data', handleData);
+        conn = peer.connect(hostId, {
+            reliable: true,
+            serialization: 'json'
         });
 
-        conn.on('error', () => showToast('Не удалось подключиться'));
+        conn.on('open', () => {
+            console.log('Connected to host!');
+            showToast('Подключено! Начинаем игру', 2000);
+            conn.send({ type: 'join', name: name });
+        });
+
+        conn.on('data', (data) => {
+            console.log('Guest received:', data);
+            handleData(data);
+        });
+
+        conn.on('error', (err) => {
+            console.error('Connection error:', err);
+            showToast('Не удалось подключиться');
+        });
+
         conn.on('close', () => {
             showToast('Соединение потеряно');
             setTimeout(() => location.reload(), 2000);
@@ -162,15 +205,17 @@ joinBtn.addEventListener('click', () => {
     });
 
     peer.on('error', (err) => {
-        console.error(err);
-        showToast('Ошибка подключения');
+        console.error('Peer error:', err);
+        if (err.type === 'peer-unavailable') {
+            showToast('Комната не найдена. Проверь код!');
+        } else {
+            showToast('Ошибка: ' + err.type);
+        }
     });
 });
 
 // === DATA HANDLER ===
 function handleData(data) {
-    console.log('Got:', data);
-
     switch (data.type) {
         case 'join':
             // Host receives this
@@ -252,9 +297,7 @@ cells.forEach((cell, i) => {
         if (mySide === 'X') {
             makeMove(i, 'X');
         } else {
-            // Guest sends move to host
             conn.send({ type: 'move', index: i });
-            // Optimistic UI
             boardState[i] = 'O';
             isMyTurn = false;
             renderBoard();
@@ -277,3 +320,5 @@ copyBtn.addEventListener('click', () => {
 
 playerNameInput.addEventListener('keypress', e => e.key === 'Enter' && createBtn.click());
 roomCodeInput.addEventListener('keypress', e => e.key === 'Enter' && joinBtn.click());
+
+console.log('Game loaded! PeerJS version.');
