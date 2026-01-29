@@ -1,15 +1,16 @@
 {
-    "name": "tic-tac-toe-multiplayer",
-    "version": "1.0.0",
-    "description": "Multiplayer Tic-Tac-Toe game with Socket.IO",
-    "main": "server.js",
+    "name": "tic-tac-toe-p2p",
+    "version": "2.0.0",
+    "description": "Serverless Multiplayer Tic-Tac-Toe using PeerJS",
     "scripts": {
-        "start": "node server.js",
-        "share": "lt --port 3000"
+        "test": "echo \"No tests specified\" && exit 1"
     },
-    "dependencies": {
-        "express": "^4.18.2",
-        "localtunnel": "^2.0.2",
-        "socket.io": "^4.7.2"
-    }
+    "keywords": [
+        "tic-tac-toe",
+        "peerjs",
+        "webrtc",
+        "p2p"
+    ],
+    "author": "",
+    "license": "MIT"
 }
