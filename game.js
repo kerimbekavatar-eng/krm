@@ -1,324 +1,304 @@
-// === GAME STATE ===
-let peer = null;
-let conn = null;
-let mySide = null;
-let isMyTurn = false;
-let gameActive = false;
-let boardState = Array(9).fill(null);
-let currentTurn = 'X';
-let players = { X: 'Хост', O: 'Гость' };
-let myRoomCode = '';
+// Game State
+let board = ['', '', '', '', '', '', '', '', ''];
+let currentPlayer = 'X';
+let gameActive = true;
+let difficulty = 'medium';
+let scores = {
+    player: 0,
+    ai: 0,
+    draws: 0
+};
 
-// === DOM ELEMENTS ===
-const $ = id => document.getElementById(id);
-const lobbyScreen = $('lobby');
-const waitingScreen = $('waiting');
-const gameScreen = $('game');
-const playerNameInput = $('playerName');
-const roomCodeInput = $('roomCodeInput');
-const createBtn = $('createBtn');
-const joinBtn = $('joinBtn');
-const copyBtn = $('copyBtn');
-const displayCode = $('displayCode');
+// DOM Elements
+const menuScreen = document.getElementById('menu-screen');
+const gameScreen = document.getElementById('game-screen');
+const boardElement = document.getElementById('board');
 const cells = document.querySelectorAll('.cell');
-const status = $('status');
-const rematchBtn = $('rematchBtn');
-const playerXName = $('playerXName');
-const playerOName = $('playerOName');
-const toast = $('toast');
+const statusElement = document.getElementById('status');
+const resultModal = document.getElementById('result-modal');
+const resultIcon = document.getElementById('result-icon');
+const resultTitle = document.getElementById('result-title');
+const resultMessage = document.getElementById('result-message');
+const currentDifficultyElement = document.getElementById('current-difficulty');
 
-// === UI HELPERS ===
-function showScreen(screen) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    screen.classList.add('active');
-}
+// Difficulty Buttons
+const difficultyBtns = document.querySelectorAll('.difficulty-btn');
 
-function showToast(msg, duration = 3000) {
-    toast.textContent = msg;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), duration);
-}
+// Action Buttons
+const startBtn = document.getElementById('start-btn');
+const backBtn = document.getElementById('back-btn');
+const restartBtn = document.getElementById('restart-btn');
+const playAgainBtn = document.getElementById('play-again-btn');
+const menuBtn = document.getElementById('menu-btn');
 
-function updateStatus(text, cls = '') {
-    status.textContent = text;
-    status.className = 'status ' + cls;
-}
+// Score Elements
+const playerWinsElement = document.getElementById('player-wins');
+const aiWinsElement = document.getElementById('ai-wins');
+const drawsElement = document.getElementById('draws');
 
-function renderBoard() {
-    cells.forEach((cell, i) => {
-        const val = boardState[i];
-        cell.textContent = val || '';
-        cell.className = 'cell' + (val ? ` ${val.toLowerCase()} filled` : '');
-    });
-}
+// Winning Combinations
+const winPatterns = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+    [0, 4, 8], [2, 4, 6] // Diagonals
+];
 
-function checkWinner() {
-    const lines = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8],
-        [0, 3, 6], [1, 4, 7], [2, 5, 8],
-        [0, 4, 8], [2, 4, 6]
-    ];
-    for (const [a, b, c] of lines) {
-        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
-            return { winner: boardState[a], line: [a, b, c] };
-        }
-    }
-    if (boardState.every(c => c !== null)) return { winner: 'draw', line: null };
-    return null;
-}
+// Difficulty Settings
+const difficultySettings = {
+    easy: { icon: '🌱', name: 'Лёгкий' },
+    medium: { icon: '⚡', name: 'Средний' },
+    hard: { icon: '🔥', name: 'Сложный' },
+    impossible: { icon: '💀', name: 'Невозможный' }
+};
 
-function endGame(result) {
-    gameActive = false;
-    if (result.winner === 'draw') {
-        updateStatus('Ничья! 🤝', 'draw');
-    } else {
-        updateStatus(result.winner === mySide ? 'Ты победил! 🎉' : 'Ты проиграл 😢', 'winner');
-        if (result.line) result.line.forEach(i => cells[i].classList.add('winning'));
-    }
-    rematchBtn.classList.remove('hidden');
-}
-
-// === PEER SETUP ===
-function generateCode() {
-    // Simple 6-character code
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
-function codeToPeerId(code) {
-    return 'xo-game-' + code.toLowerCase();
-}
-
-// === HOST (X) ===
-createBtn.addEventListener('click', () => {
-    const name = playerNameInput.value.trim() || 'Хост';
-    players.X = name;
-    myRoomCode = generateCode();
-    const peerId = codeToPeerId(myRoomCode);
-
-    showToast('Подключение...', 10000);
-
-    peer = new Peer(peerId, {
-        debug: 2
-    });
-
-    peer.on('open', (id) => {
-        console.log('Host peer opened with ID:', id);
-        mySide = 'X';
-        displayCode.textContent = myRoomCode;
-        showScreen(waitingScreen);
-        showToast('Комната создана! Жди друга', 3000);
-    });
-
-    peer.on('connection', (connection) => {
-        console.log('Guest connected!');
-        conn = connection;
-
-        conn.on('open', () => {
-            console.log('Connection opened');
-            showToast('Игрок подключился!', 2000);
-        });
-
-        conn.on('data', (data) => {
-            console.log('Host received:', data);
-            handleData(data);
-        });
-
-        conn.on('close', () => {
-            showToast('Противник отключился');
-            setTimeout(() => location.reload(), 2000);
-        });
-
-        conn.on('error', (err) => {
-            console.error('Connection error:', err);
-            showToast('Ошибка соединения');
-        });
-    });
-
-    peer.on('error', (err) => {
-        console.error('Peer error:', err);
-        if (err.type === 'unavailable-id') {
-            showToast('Код занят, создаю новый...');
-            setTimeout(() => {
-                peer.destroy();
-                createBtn.click();
-            }, 1000);
-        } else {
-            showToast('Ошибка: ' + err.type);
-        }
-    });
-
-    peer.on('disconnected', () => {
-        console.log('Peer disconnected, reconnecting...');
-        peer.reconnect();
+// Event Listeners
+difficultyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        difficultyBtns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        difficulty = btn.dataset.difficulty;
     });
 });
 
-// === GUEST (O) ===
-joinBtn.addEventListener('click', () => {
-    const name = playerNameInput.value.trim() || 'Гость';
-    const code = roomCodeInput.value.trim().toUpperCase();
+startBtn.addEventListener('click', startGame);
+backBtn.addEventListener('click', goToMenu);
+restartBtn.addEventListener('click', resetGame);
+playAgainBtn.addEventListener('click', () => {
+    hideModal();
+    resetGame();
+});
+menuBtn.addEventListener('click', () => {
+    hideModal();
+    goToMenu();
+});
 
-    if (code.length < 4) {
-        showToast('Введи код комнаты (6 символов)');
+cells.forEach(cell => {
+    cell.addEventListener('click', () => handleCellClick(cell));
+});
+
+// Functions
+function startGame() {
+    menuScreen.classList.remove('active');
+    gameScreen.classList.add('active');
+    updateDifficultyIndicator();
+    resetGame();
+}
+
+function goToMenu() {
+    gameScreen.classList.remove('active');
+    menuScreen.classList.add('active');
+}
+
+function updateDifficultyIndicator() {
+    const settings = difficultySettings[difficulty];
+    currentDifficultyElement.innerHTML = `
+        <span class="diff-icon">${settings.icon}</span>
+        <span>${settings.name}</span>
+    `;
+}
+
+function handleCellClick(cell) {
+    const index = parseInt(cell.dataset.index);
+
+    if (board[index] !== '' || !gameActive || currentPlayer !== 'X') {
         return;
     }
 
-    players.O = name;
-    const hostId = codeToPeerId(code);
+    makeMove(index, 'X');
 
-    showToast('Подключение к ' + code + '...', 10000);
-    console.log('Connecting to host:', hostId);
+    if (gameActive) {
+        currentPlayer = 'O';
+        statusElement.textContent = 'ИИ думает...';
 
-    peer = new Peer(undefined, {
-        debug: 2
-    });
-
-    peer.on('open', (myId) => {
-        console.log('Guest peer opened with ID:', myId);
-        mySide = 'O';
-
-        conn = peer.connect(hostId, {
-            reliable: true,
-            serialization: 'json'
-        });
-
-        conn.on('open', () => {
-            console.log('Connected to host!');
-            showToast('Подключено! Начинаем игру', 2000);
-            conn.send({ type: 'join', name: name });
-        });
-
-        conn.on('data', (data) => {
-            console.log('Guest received:', data);
-            handleData(data);
-        });
-
-        conn.on('error', (err) => {
-            console.error('Connection error:', err);
-            showToast('Не удалось подключиться');
-        });
-
-        conn.on('close', () => {
-            showToast('Соединение потеряно');
-            setTimeout(() => location.reload(), 2000);
-        });
-    });
-
-    peer.on('error', (err) => {
-        console.error('Peer error:', err);
-        if (err.type === 'peer-unavailable') {
-            showToast('Комната не найдена. Проверь код!');
-        } else {
-            showToast('Ошибка: ' + err.type);
-        }
-    });
-});
-
-// === DATA HANDLER ===
-function handleData(data) {
-    switch (data.type) {
-        case 'join':
-            // Host receives this
-            players.O = data.name;
-            startGame();
-            break;
-
-        case 'start':
-            players = data.players;
-            boardState = data.board;
-            currentTurn = data.turn;
-            gameActive = true;
-            rematchBtn.classList.add('hidden');
-            playerXName.textContent = players.X;
-            playerOName.textContent = players.O;
-            isMyTurn = (currentTurn === mySide);
-            showScreen(gameScreen);
-            renderBoard();
-            updateTurnStatus();
-            break;
-
-        case 'move':
-            // Host receives guest move
-            if (mySide === 'X' && currentTurn === 'O') {
-                makeMove(data.index, 'O');
+        // AI move with slight delay for better UX
+        setTimeout(() => {
+            if (gameActive) {
+                const aiMove = getAIMove();
+                makeMove(aiMove, 'O');
+                if (gameActive) {
+                    currentPlayer = 'X';
+                    statusElement.textContent = 'Твой ход!';
+                }
             }
-            break;
-
-        case 'update':
-            boardState = data.board;
-            currentTurn = data.turn;
-            renderBoard();
-            isMyTurn = (currentTurn === mySide);
-            updateTurnStatus();
-            if (data.result) endGame(data.result);
-            break;
-
-        case 'rematch':
-            if (mySide === 'X') startGame();
-            break;
+        }, 500);
     }
 }
 
-function updateTurnStatus() {
-    if (!gameActive) return;
-    if (isMyTurn) {
-        updateStatus(`Твой ход! (${mySide})`, mySide.toLowerCase() + '-turn');
-    } else {
-        updateStatus('Ход противника...', currentTurn.toLowerCase() + '-turn');
+function makeMove(index, player) {
+    board[index] = player;
+    const cell = cells[index];
+    cell.textContent = player;
+    cell.classList.add(player.toLowerCase(), 'taken');
+
+    const winner = checkWinner();
+    if (winner) {
+        gameActive = false;
+        handleGameEnd(winner);
+    } else if (board.every(cell => cell !== '')) {
+        gameActive = false;
+        handleGameEnd('draw');
     }
 }
 
-function startGame() {
-    boardState = Array(9).fill(null);
-    currentTurn = 'X';
-    gameActive = true;
-    isMyTurn = (mySide === 'X');
-
-    const msg = { type: 'start', players, board: boardState, turn: currentTurn };
-    handleData(msg);
-    if (conn && conn.open) conn.send(msg);
-}
-
-function makeMove(index, symbol) {
-    boardState[index] = symbol;
-    currentTurn = symbol === 'X' ? 'O' : 'X';
-    const result = checkWinner();
-
-    const msg = { type: 'update', board: boardState, turn: currentTurn, result };
-    handleData(msg);
-    if (conn && conn.open) conn.send(msg);
-}
-
-// === CELL CLICKS ===
-cells.forEach((cell, i) => {
-    cell.addEventListener('click', () => {
-        if (!gameActive || !isMyTurn || boardState[i]) return;
-
-        if (mySide === 'X') {
-            makeMove(i, 'X');
-        } else {
-            conn.send({ type: 'move', index: i });
-            boardState[i] = 'O';
-            isMyTurn = false;
-            renderBoard();
-            updateTurnStatus();
+function checkWinner() {
+    for (const pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            // Highlight winning cells
+            cells[a].classList.add('win');
+            cells[b].classList.add('win');
+            cells[c].classList.add('win');
+            return board[a];
         }
+    }
+    return null;
+}
+
+function handleGameEnd(result) {
+    setTimeout(() => {
+        if (result === 'X') {
+            scores.player++;
+            playerWinsElement.textContent = scores.player;
+            showModal('🎉', 'Победа!', 'Ты победил ИИ!');
+        } else if (result === 'O') {
+            scores.ai++;
+            aiWinsElement.textContent = scores.ai;
+            showModal('😢', 'Поражение', 'ИИ победил. Попробуй ещё раз!');
+        } else {
+            scores.draws++;
+            drawsElement.textContent = scores.draws;
+            showModal('🤝', 'Ничья!', 'Никто не победил.');
+        }
+    }, 500);
+}
+
+function showModal(icon, title, message) {
+    resultIcon.textContent = icon;
+    resultTitle.textContent = title;
+    resultMessage.textContent = message;
+    resultModal.classList.add('active');
+}
+
+function hideModal() {
+    resultModal.classList.remove('active');
+}
+
+function resetGame() {
+    board = ['', '', '', '', '', '', '', '', ''];
+    currentPlayer = 'X';
+    gameActive = true;
+    statusElement.textContent = 'Твой ход!';
+
+    cells.forEach(cell => {
+        cell.textContent = '';
+        cell.classList.remove('x', 'o', 'taken', 'win');
     });
-});
+}
 
-// === OTHER BUTTONS ===
-rematchBtn.addEventListener('click', () => {
-    if (conn && conn.open) conn.send({ type: 'rematch' });
-    if (mySide === 'X') startGame();
-});
+// AI Logic
+function getAIMove() {
+    switch (difficulty) {
+        case 'easy':
+            return getEasyMove();
+        case 'medium':
+            return getMediumMove();
+        case 'hard':
+            return getHardMove();
+        case 'impossible':
+            return getImpossibleMove();
+        default:
+            return getMediumMove();
+    }
+}
 
-copyBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(displayCode.textContent);
-    copyBtn.textContent = '✅ Скопировано!';
-    setTimeout(() => copyBtn.textContent = '📋 Копировать', 2000);
-});
+function getEasyMove() {
+    // Random move
+    const availableMoves = getAvailableMoves();
+    return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+}
 
-playerNameInput.addEventListener('keypress', e => e.key === 'Enter' && createBtn.click());
-roomCodeInput.addEventListener('keypress', e => e.key === 'Enter' && joinBtn.click());
+function getMediumMove() {
+    // 50% chance of making the best move, 50% random
+    if (Math.random() < 0.5) {
+        return getImpossibleMove();
+    }
+    return getEasyMove();
+}
 
-console.log('Game loaded! PeerJS version.');
+function getHardMove() {
+    // 80% chance of making the best move, 20% random
+    if (Math.random() < 0.8) {
+        return getImpossibleMove();
+    }
+    return getEasyMove();
+}
+
+function getImpossibleMove() {
+    // Minimax algorithm for perfect play
+    let bestScore = -Infinity;
+    let bestMove = null;
+
+    for (const move of getAvailableMoves()) {
+        board[move] = 'O';
+        const score = minimax(board, 0, false, -Infinity, Infinity);
+        board[move] = '';
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = move;
+        }
+    }
+
+    return bestMove;
+}
+
+function minimax(board, depth, isMaximizing, alpha, beta) {
+    const winner = checkWinnerForMinimax(board);
+
+    if (winner === 'O') return 10 - depth;
+    if (winner === 'X') return depth - 10;
+    if (getAvailableMoves().length === 0) return 0;
+
+    if (isMaximizing) {
+        let maxScore = -Infinity;
+        for (const move of getAvailableMoves()) {
+            board[move] = 'O';
+            const score = minimax(board, depth + 1, false, alpha, beta);
+            board[move] = '';
+            maxScore = Math.max(score, maxScore);
+            alpha = Math.max(alpha, score);
+            if (beta <= alpha) break;
+        }
+        return maxScore;
+    } else {
+        let minScore = Infinity;
+        for (const move of getAvailableMoves()) {
+            board[move] = 'X';
+            const score = minimax(board, depth + 1, true, alpha, beta);
+            board[move] = '';
+            minScore = Math.min(score, minScore);
+            beta = Math.min(beta, score);
+            if (beta <= alpha) break;
+        }
+        return minScore;
+    }
+}
+
+function checkWinnerForMinimax(board) {
+    for (const pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            return board[a];
+        }
+    }
+    return null;
+}
+
+function getAvailableMoves() {
+    return board.map((cell, index) => cell === '' ? index : null).filter(x => x !== null);
+}
+
+// Update scores display on load
+playerWinsElement.textContent = scores.player;
+aiWinsElement.textContent = scores.ai;
+drawsElement.textContent = scores.draws;
