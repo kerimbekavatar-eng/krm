@@ -7,7 +7,7 @@
 ## 🌍 Как играть (GitHub Pages)
 
 ### 1. Откройте сайт
-https://krm.github.io/krm
+https://kerimbekavatar-eng.github.io/krm
 
 ### 2. Создать комнату
 - Нажмите **"Создать комнату"**.
